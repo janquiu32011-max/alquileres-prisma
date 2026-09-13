@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Punto Prisma - Alquileres</title>
+    <link rel="manifest" href="manifest.json">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -42,7 +43,7 @@
             </button>
         </header>
 
-        <!-- Barra de Navegación / Filtros Rábidos -->
+        <!-- Barra de Navegación / Filtros Rápidos -->
         <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex gap-2 text-xs font-medium">
             <button onclick="filtrarEstado('todos')" id="btn-filtro-todos" class="flex-1 py-1.5 rounded-lg bg-brand-600 text-white transition shadow-sm">Todos</button>
             <button onclick="filtrarEstado('ocupado')" id="btn-filtro-ocupado" class="flex-1 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 transition">Ocupados</button>
@@ -151,11 +152,9 @@
 
     <!-- SCRIPT DE LOGICA Y BLINDAJE (Punto Prisma Architecture) -->
     <script>
-        // Clave LocalStorage
         const STORAGE_KEY = 'punto_prisma_alquileres_v1';
         let filtroActual = 'todos';
 
-        // Datos Mock de Prueba (Blindados a prueba de errores)
         const datosEjemplo = [
             {
                 id: '1',
@@ -165,7 +164,7 @@
                 sena: 500000,
                 comision: 900000,
                 inquilino: 'Carlos Benítez',
-                fecha_cobro: '2026-08-13', // Forzado para activar aviso de mes vencido/cobro
+                fecha_cobro: '2026-08-13',
                 gps_url: 'https://maps.google.com/?q=-25.2637,-57.5759',
                 observaciones: 'Incluye expensas básicas. 1 habitación, amoblado con aire split y placard.',
                 foto_url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=500'
@@ -185,7 +184,6 @@
             }
         ];
 
-        // Inicializador LocalStorage
         function obtenerInmuebles() {
             try {
                 const data = localStorage.getItem(STORAGE_KEY);
@@ -208,13 +206,11 @@
             }
         }
 
-        // Formato Moneda Guaraníes (Gs.)
         function formatoGs(valor) {
             const numero = Number(valor) || 0;
             return numero.toLocaleString('es-PY') + ' Gs.';
         }
 
-        // Renderizado Principal
         function renderizar() {
             const inmuebles = obtenerInmuebles();
             const contenedor = document.getElementById('lista-inmuebles');
@@ -236,19 +232,16 @@
             }
 
             filtrados.forEach(item => {
-                // Cálculo de Alerta de Mes de Cobro
                 let alertaCobro = false;
                 if (item.estado === 'ocupado' && item.fecha_cobro) {
                     const fechaCobro = new Date(item.fecha_cobro);
                     const hoy = new Date();
-                    // Verificar si ya pasó un mes o más desde el último cobro/inicio
                     const diferenciaMeses = (hoy.getFullYear() - fechaCobro.getFullYear()) * 12 + (hoy.getMonth() - fechaCobro.getMonth());
                     if (diferenciaMeses >= 1 || hoy >= fechaCobro) {
                         alertaCobro = true;
                     }
                 }
 
-                // Generar link WhatsApp para interesados (Si está disponible o para enviar detalles)
                 const textoWap = encodeURIComponent(`¡Hola! Estoy interesado/a en el alquiler: *${item.nombre}*. Precio: ${formatoGs(item.monto_alquiler)}. Ubicación GPS: ${item.gps_url || 'Consultar'}`);
                 const linkWap = `https://api.whatsapp.com/send?text=${textoWap}`;
 
@@ -313,7 +306,6 @@
             });
         }
 
-        // Filtros de Estado
         function filtrarEstado(estado) {
             filtroActual = estado;
             ['todos', 'ocupado', 'disponible'].forEach(est => {
@@ -327,7 +319,6 @@
             renderizar();
         }
 
-        // Gestión de Modales
         function abrirModalNuevo() {
             document.getElementById('modal-titulo').innerText = 'Registrar Nuevo Inmueble';
             document.getElementById('form-inmueble').reset();
@@ -362,7 +353,6 @@
             document.getElementById('modal-inmueble').classList.remove('hidden');
         }
 
-        // Guardar Inmueble (Crear o Actualizar)
         function guardarInmueble(e) {
             e.preventDefault();
             const id = document.getElementById('inmueble-id').value;
@@ -394,7 +384,6 @@
             renderizar();
         }
 
-        // Dar de baja (Libera el inmueble para alquilar nuevamente)
         function darDeBaja(id) {
             if (!confirm('¿Desea dar de baja este contrato? El inmueble quedará libre y disponible nuevamente.')) return;
             const inmuebles = obtenerInmuebles();
@@ -410,7 +399,6 @@
             }
         }
 
-        // Eliminar Registro
         function eliminarInmueble(id) {
             if (!confirm('¿Está seguro de eliminar permanentemente este registro?')) return;
             let inmuebles = obtenerInmuebles();
@@ -419,7 +407,6 @@
             renderizar();
         }
 
-        // Exportar Backup de Seguridad Local
         function exportarBackup() {
             const data = localStorage.getItem(STORAGE_KEY);
             const blob = new Blob([data], { type: 'application/json' });
@@ -430,7 +417,6 @@
             a.click();
         }
 
-        // Inicializar al cargar la página
         window.onload = renderizar;
     </script>
 </body>
