@@ -106,12 +106,10 @@
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Seña Inicial (Gs.)</label>
                         <input type="number" id="sena" min="0" value="0" placeholder="0" class="w-full border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-brand-500 outline-none">
-                        <span class="text-[10px] text-slate-400">Si no hay, dejar en 0</span>
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Comisión (Gs.)</label>
                         <input type="number" id="comision" min="0" value="0" placeholder="0" class="w-full border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-brand-500 outline-none">
-                        <span class="text-[10px] text-slate-400">Si no hay, dejar en 0</span>
                     </div>
                 </div>
 
@@ -127,19 +125,24 @@
                 </div>
 
                 <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Recargo por Mora / Atraso (Gs.)</label>
+                    <input type="number" id="recargo_mora" min="0" value="0" placeholder="Ej: 50000" class="w-full border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-brand-500 outline-none">
+                    <span class="text-[10px] text-slate-400">Monto adicional automático si se vence el mes sin pagar.</span>
+                </div>
+
+                <div>
                     <label class="block font-semibold text-slate-700 mb-1">Enlace Ubicación GPS / Google Maps</label>
                     <input type="url" id="gps_url" placeholder="https://maps.google.com/..." class="w-full border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-brand-500 outline-none">
                 </div>
 
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Observaciones / Inventario del Inmueble</label>
-                    <textarea id="observaciones" rows="2" placeholder="Ej: 2 aires acondicionados, cocina empotrada, buen estado..." class="w-full border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-brand-500 outline-none"></textarea>
+                    <textarea id="observaciones" rows="2" placeholder="Ej: 2 aires acondicionados, cocina empotrada..." class="w-full border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-brand-500 outline-none"></textarea>
                 </div>
 
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">URL de Foto del Inmueble</label>
                     <input type="url" id="foto_url" placeholder="https://images.unsplash.com/..." class="w-full border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-brand-500 outline-none">
-                    <span class="text-[10px] text-slate-400">Pega un enlace de imagen directa.</span>
                 </div>
 
                 <div class="pt-3 flex gap-3">
@@ -150,10 +153,39 @@
         </div>
     </div>
 
-    <!-- SCRIPT DE LOGICA Y BLINDAJE (Punto Prisma Architecture) -->
+    <!-- MODAL: RECIBO DE PAGO -->
+    <div id="modal-recibo" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-lg text-slate-800"><i class="fa-solid fa-receipt text-brand-600 mr-2"></i>Recibo de Alquiler</h3>
+                <button onclick="cerrarRecibo()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div id="contenido-recibo" class="bg-slate-50 p-4 rounded-xl text-xs space-y-2 border border-slate-200 font-mono">
+                <!-- Se llena dinámicamente -->
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="compartirReciboWap()" class="flex-1 bg-emerald-600 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow hover:bg-emerald-700 transition">
+                    <i class="fa-brands fa-whatsapp text-sm"></i> Enviar por WhatsApp
+                </button>
+                <button onclick="cerrarRecibo()" class="bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold text-xs">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE LOGICA Y BLINDAJE -->
     <script>
-        const STORAGE_KEY = 'punto_prisma_alquileres_v1';
+        const STORAGE_KEY = 'punto_prisma_alquileres_v2';
         let filtroActual = 'todos';
+        let reciboActualTexto = '';
+
+        const mesesLista = [
+            { id: '2026-01', nombre: 'Ene' }, { id: '2026-02', nombre: 'Feb' },
+            { id: '2026-03', nombre: 'Mar' }, { id: '2026-04', nombre: 'Abr' },
+            { id: '2026-05', nombre: 'May' }, { id: '2026-06', nombre: 'Jun' },
+            { id: '2026-07', nombre: 'Jul' }, { id: '2026-08', nombre: 'Ago' },
+            { id: '2026-09', nombre: 'Sep' }, { id: '2026-10', nombre: 'Oct' },
+            { id: '2026-11', nombre: 'Nov' }, { id: '2026-12', nombre: 'Dic' }
+        ];
 
         const datosEjemplo = [
             {
@@ -165,22 +197,11 @@
                 comision: 900000,
                 inquilino: 'Carlos Benítez',
                 fecha_cobro: '2026-08-13',
+                recargo_mora: 50000,
+                pagos: { '2026-08': true, '2026-09': false },
                 gps_url: 'https://maps.google.com/?q=-25.2637,-57.5759',
-                observaciones: 'Incluye expensas básicas. 1 habitación, amoblado con aire split y placard.',
+                observaciones: 'Incluye expensas básicas. 1 habitación amoblada.',
                 foto_url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=500'
-            },
-            {
-                id: '2',
-                nombre: 'Local Comercial Nº 3 - Galerías Sur',
-                estado: 'disponible',
-                monto_alquiler: 2500000,
-                sena: 0,
-                comision: 0,
-                inquilino: '',
-                fecha_cobro: '',
-                gps_url: 'https://maps.google.com/?q=-25.2867,-57.6470',
-                observaciones: 'Amplio salón comercial con baño privado y cortina metálica automática.',
-                foto_url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=500'
             }
         ];
 
@@ -193,17 +214,12 @@
                 }
                 return JSON.parse(data);
             } catch (e) {
-                console.error("Error al leer localStorage:", e);
                 return datosEjemplo;
             }
         }
 
         function guardarBD(inmuebles) {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(inmuebles));
-            } catch (e) {
-                alert("Error al guardar localmente en el celular.");
-            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(inmuebles));
         }
 
         function formatoGs(valor) {
@@ -233,12 +249,22 @@
 
             filtrados.forEach(item => {
                 let alertaCobro = false;
+                let conMora = false;
+                let montoTotalAPagar = item.monto_alquiler;
+
                 if (item.estado === 'ocupado' && item.fecha_cobro) {
                     const fechaCobro = new Date(item.fecha_cobro);
                     const hoy = new Date();
                     const diferenciaMeses = (hoy.getFullYear() - fechaCobro.getFullYear()) * 12 + (hoy.getMonth() - fechaCobro.getMonth());
+                    
                     if (diferenciaMeses >= 1 || hoy >= fechaCobro) {
                         alertaCobro = true;
+                        // Comprobar si el mes actual ya fue pagado
+                        const mesActualKey = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+                        if (!item.pagos || !item.pagos[mesActualKey]) {
+                            conMora = true;
+                            montoTotalAPagar += Number(item.recargo_mora || 0);
+                        }
                     }
                 }
 
@@ -248,6 +274,23 @@
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-2xl border ${item.estado === 'ocupado' ? 'border-emerald-200 shadow-sm' : 'border-slate-200'} overflow-hidden transition`;
                 
+                // Generar HTML de Calendario de Pagos por Mes
+                let htmlCalendario = '';
+                if (item.estado === 'ocupado') {
+                    htmlCalendario = `<div class="mt-2 pt-2 border-t border-slate-100">
+                        <p class="text-[11px] font-bold text-slate-700 mb-1"><i class="fa-solid fa-calendar-days text-brand-600 mr-1"></i> Historial de Pagos 2026:</p>
+                        <div class="flex gap-1 overflow-x-auto pb-1">`;
+                    
+                    mesesLista.forEach(mes => {
+                        const pagado = item.pagos && item.pagos[mes.id];
+                        htmlCalendario += `
+                            <button onclick="togglePagoMes('${item.id}', '${mes.id}')" class="px-2 py-1 rounded text-[10px] font-bold transition whitespace-nowrap ${pagado ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}">
+                                ${mes.nombre} ${pagado ? '✓' : ''}
+                            </button>`;
+                    });
+                    htmlCalendario += `</div></div>`;
+                }
+
                 card.innerHTML = `
                     <div class="relative h-36 bg-slate-200">
                         <img src="${item.foto_url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=500'}" alt="Foto" class="w-full h-full object-cover">
@@ -258,7 +301,7 @@
                         </div>
                         ${alertaCobro ? `
                         <div class="absolute top-2 left-2 bg-rose-600 text-white px-2.5 py-1 rounded-full text-[10px] font-bold animate-pulse shadow">
-                            <i class="fa-solid fa-bell mr-1"></i> ¡Mes de Cobro!
+                            <i class="fa-solid fa-bell mr-1"></i> ${conMora ? '¡Vencido con Mora!' : '¡Mes de Cobro!'}
                         </div>` : ''}
                     </div>
 
@@ -270,6 +313,12 @@
                                 <span>Alquiler Mensual:</span>
                                 <span>${formatoGs(item.monto_alquiler)}</span>
                             </div>
+                            ${conMora ? `
+                                <div class="flex justify-between text-rose-600 font-bold bg-rose-50 p-1 rounded">
+                                    <span>Incluye Recargo Mora:</span>
+                                    <span>+${formatoGs(item.recargo_mora)} (Total: ${formatoGs(montoTotalAPagar)})</span>
+                                </div>
+                            ` : ''}
                             ${Number(item.sena) > 0 ? `<div class="flex justify-between text-slate-600"><span>Seña Inicial:</span><span>${formatoGs(item.sena)}</span></div>` : ''}
                             ${Number(item.comision) > 0 ? `<div class="flex justify-between text-slate-600"><span>Comisión:</span><span>${formatoGs(item.comision)}</span></div>` : ''}
                         </div>
@@ -279,6 +328,7 @@
                                 <p><strong class="text-slate-700">Inquilino:</strong> ${item.inquilino || 'No especificado'}</p>
                                 <p><strong class="text-slate-700">Inicio/Cobro:</strong> ${item.fecha_cobro || 'No registrada'}</p>
                             </div>
+                            ${htmlCalendario}
                         ` : ''}
 
                         ${item.observaciones ? `
@@ -290,13 +340,12 @@
                         <div class="pt-2 flex flex-wrap gap-2 items-center justify-between border-t border-slate-100">
                             <div class="flex gap-1">
                                 ${item.gps_url ? `<a href="${item.gps_url}" target="_blank" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl text-xs" title="Ver GPS"><i class="fa-solid fa-location-dot"></i></a>` : ''}
-                                <a href="${linkWap}" target="_blank" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1" title="Enviar por WhatsApp"><i class="fa-brands fa-whatsapp text-sm"></i> Compartir</a>
+                                <a href="${linkWap}" target="_blank" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1" title="Compartir"><i class="fa-brands fa-whatsapp text-sm"></i> Compartir</a>
+                                ${item.estado === 'ocupado' ? `<button onclick="generarRecibo('${item.id}')" class="bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-2 rounded-xl text-xs font-semibold" title="Generar Recibo"><i class="fa-solid fa-receipt"></i> Recibo</button>` : ''}
                             </div>
                             <div class="flex gap-1">
                                 <button onclick="editarInmueble('${item.id}')" class="text-slate-400 hover:text-brand-600 p-2" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                                ${item.estado === 'ocupado' ? `
-                                    <button onclick="darDeBaja('${item.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition" title="Liberar inmueble">Dar de Baja</button>
-                                ` : ''}
+                                ${item.estado === 'ocupado' ? `<button onclick="darDeBaja('${item.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition" title="Dar de baja">Dar de Baja</button>` : ''}
                                 <button onclick="eliminarInmueble('${item.id}')" class="text-slate-400 hover:text-rose-600 p-2" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
@@ -304,6 +353,51 @@
                 `;
                 contenedor.appendChild(card);
             });
+        }
+
+        function togglePagoMes(id, mesId) {
+            const inmuebles = obtenerInmuebles();
+            const item = inmuebles.find(i => i.id === id);
+            if (item) {
+                if (!item.pagos) item.pagos = {};
+                item.pagos[mesId] = !item.pagos[mesId];
+                guardarBD(inmuebles);
+                renderizar();
+            }
+        }
+
+        function generarRecibo(id) {
+            const inmuebles = obtenerInmuebles();
+            const item = inmuebles.find(i => i.id === id);
+            if (!item) return;
+
+            const hoy = new Date().toISOString().slice(0,10);
+            reciboActualTexto = `--- RECIBO DE ALQUILER ---
+Inmueble: ${item.nombre}
+Inquilino: ${item.inquilino || 'N/A'}
+Monto: ${formatoGs(item.monto_alquiler)}
+Fecha Emisión: ${hoy}
+Estado: PAGADO / AL DÍA
+--------------------------
+Punto Prisma - Alquileres`;
+
+            document.getElementById('contenido-recibo').innerHTML = `
+                <p><strong>Inmueble:</strong> ${item.nombre}</p>
+                <p><strong>Inquilino:</strong> ${item.inquilino || 'N/A'}</p>
+                <p><strong>Monto Alquiler:</strong> ${formatoGs(item.monto_alquiler)}</p>
+                <p><strong>Fecha:</strong> ${hoy}</p>
+                <p class="text-brand-700 font-bold pt-2">✓ RECIBO VÁLIDO Y EMITIDO</p>
+            `;
+            document.getElementById('modal-recibo').classList.remove('hidden');
+        }
+
+        function cerrarRecibo() {
+            document.getElementById('modal-recibo').classList.add('hidden');
+        }
+
+        function compartirReciboWap() {
+            const urlWap = `https://api.whatsapp.com/send?text=${encodeURIComponent(reciboActualTexto)}`;
+            window.open(urlWap, '_blank');
         }
 
         function filtrarEstado(estado) {
@@ -325,6 +419,7 @@
             document.getElementById('inmueble-id').value = '';
             document.getElementById('sena').value = '0';
             document.getElementById('comision').value = '0';
+            document.getElementById('recargo_mora').value = '0';
             document.getElementById('modal-inmueble').classList.remove('hidden');
         }
 
@@ -346,6 +441,7 @@
             document.getElementById('comision').value = item.comision || 0;
             document.getElementById('inquilino').value = item.inquilino || '';
             document.getElementById('fecha_cobro').value = item.fecha_cobro || '';
+            document.getElementById('recargo_mora').value = item.recargo_mora || 0;
             document.getElementById('gps_url').value = item.gps_url || '';
             document.getElementById('observaciones').value = item.observaciones || '';
             document.getElementById('foto_url').value = item.foto_url || '';
@@ -358,6 +454,8 @@
             const id = document.getElementById('inmueble-id').value;
             const inmuebles = obtenerInmuebles();
 
+            const itemExistente = id ? inmuebles.find(i => i.id === id) : null;
+
             const nuevoItem = {
                 id: id || Date.now().toString(),
                 nombre: document.getElementById('nombre').value.trim(),
@@ -367,6 +465,8 @@
                 comision: Number(document.getElementById('comision').value) || 0,
                 inquilino: document.getElementById('inquilino').value.trim(),
                 fecha_cobro: document.getElementById('fecha_cobro').value,
+                recargo_mora: Number(document.getElementById('recargo_mora').value) || 0,
+                pagos: itemExistente ? itemExistente.pagos : {},
                 gps_url: document.getElementById('gps_url').value.trim(),
                 observaciones: document.getElementById('observaciones').value.trim(),
                 foto_url: document.getElementById('foto_url').value.trim()
@@ -394,6 +494,7 @@
                 item.fecha_cobro = '';
                 item.sena = 0;
                 item.comision = 0;
+                item.pagos = {};
                 guardarBD(inmuebles);
                 renderizar();
             }
